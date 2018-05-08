@@ -141,11 +141,10 @@ func main() {
 		checkErr(err)
 		fmt.Printf("%3v | %8v | %6v | %6v\n", annotationID, name, value, index)
 		d := AnnotationMapValue{annotationID, name, value, index}
-		dbmem[index] = &d
 		if a, t, ok := getParentIDType(annotationID, db); ok {
 			fmt.Println("Parent ID", a, t)
 		}
-		dbindexInsert(&d)
+		insertEntry(&d)
 	}
 
 	//manager
