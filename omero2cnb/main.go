@@ -17,9 +17,9 @@ import (
 )
 
 var dbmem map[int]*AnnotationMapValue
-var dbindex *data.BinIndexMap
+var dbindex map[string]*data.BinIndexMap
 
-const AppName string = "omero2cnb"
+const AppName string = "Omerome Browser"
 const VERSION string = "0.0.1"
 const coordsKey string = "regions"
 
@@ -27,23 +27,23 @@ var app App = App{AppName, VERSION}
 
 func dbindexInsert(d *AnnotationMapValue) {
 	if d.Name == coordsKey {
-		if arr, ok := parseRegions(d.Value); ok {
-			for i, v := range arr {
-				ID := fmt.Sprintf("%d_%d", d.Index, i)
-				b := Bed4{v.Chr(), v.Start(), v.End(), ID}
-				dbindex.Insert(&b)
+		prefix := strconv.Itoa(d.Index)
+		if arr, ok := parseRegions(d.Value, prefix); ok {
+			for _, v := range arr {
+				if _, ok1 := dbindex[v.Genome()]; !ok1 {
+					dbindex[v.Genome()] = data.NewBinIndexMap()
+				}
+				dbindex[v.Genome()].Insert(v)
 			}
 		}
 	}
 }
 func dbindexDelete(d *AnnotationMapValue) {
 	if d.Name == coordsKey {
-		if arr, ok := parseRegions(d.Value); ok {
-			for i, v := range arr {
-				ID := fmt.Sprintf("%d_%d", d.Index, i)
-				b := Bed4{v.Chr(), v.Start(), v.End(), ID}
-				log.Println("Delete", b)
-				dbindex.Delete(&b)
+		prefix := strconv.Itoa(d.Index)
+		if arr, ok := parseRegions(d.Value, prefix); ok {
+			for _, v := range arr {
+				dbindex[v.Genome()].Delete(v)
 			}
 		}
 	}
@@ -123,7 +123,7 @@ func main() {
 
 	db, err := sql.Open("postgres", conninfo)
 	dbmem = map[int]*AnnotationMapValue{}
-	dbindex = data.NewBinIndexMap()
+	dbindex = map[string]*data.BinIndexMap{}
 	defer db.Close()
 
 	if err != nil {
@@ -142,15 +142,7 @@ func main() {
 		fmt.Printf("%3v | %8v | %6v | %6v\n", annotationID, name, value, index)
 		d := AnnotationMapValue{annotationID, name, value, index}
 		dbmem[index] = &d
-		if name == "regions" {
-			if arr, ok := parseRegions(value); ok {
-				for i, v := range arr {
-					ID := fmt.Sprintf("%d_%d", index, i)
-					b := Bed4{v.Chr(), v.Start(), v.End(), ID}
-					dbindex.Insert(&b)
-				}
-			}
-		}
+		dbindexInsert(&d)
 	}
 
 	//manager
@@ -160,7 +152,7 @@ func main() {
 	//add manager
 	manager := Manager{dbmem, ""}
 	manager.ServeTo(router)
-	binManager := BinindexRouter{dbindex, "binindex"}
+	binManager := BinindexRouter{dbindex, "omero"}
 	binManager.ServeTo(router)
 
 	router.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {

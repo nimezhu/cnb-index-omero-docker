@@ -16,22 +16,36 @@ type Action struct {
 	//Data   interface{} `json:"data"`
 	Data AnnotationMapValue `json:"data"`
 }
-type Bed4 struct {
-	chr   string
-	start int
-	end   int
-	id    string
+type BedURI struct {
+	genome string
+	chr    string
+	start  int
+	end    int
+	id     string
+	color  string
 }
 
-func (b *Bed4) Chr() string {
+func (b *BedURI) SetId(value string) {
+	b.id = value
+}
+func (b *BedURI) SetColor(value string) {
+	b.color = value
+}
+func (b *BedURI) Color() string {
+	return b.color
+}
+func (b *BedURI) Genome() string {
+	return b.genome
+}
+func (b *BedURI) Chr() string {
 	return b.chr
 }
-func (b *Bed4) Start() int {
+func (b *BedURI) Start() int {
 	return b.start
 }
-func (b *Bed4) End() int {
+func (b *BedURI) End() int {
 	return b.end
 }
-func (b *Bed4) Id() string {
+func (b *BedURI) Id() string {
 	return b.id
 }
