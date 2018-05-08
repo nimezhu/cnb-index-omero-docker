@@ -2,17 +2,24 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"strconv"
 )
 
-/* TODO */
-func getParentIdType(annotationID int, db *sql.DB) error {
-	return errors.New("TODO")
+func getParentIDType(annotationID int, db *sql.DB) (int, string, bool) {
+	var t = []string{"image", "well", "project", "dataset"}
+	for _, v := range t {
+		if idx, ok := _getParentID(annotationID, db, v); ok {
+			return idx, v, true
+		}
+	}
+	return -1, "", false
+}
+func getImageParentID(id int, db *sql.DB) (int, bool) {
+	return _getParentID(id, db, "image")
 }
 
-func getImageParentID(annotationID int, db *sql.DB) (int, bool) {
-	rows, err := db.Query("SELECT parent FROM imageannotationlink where child=" + strconv.Itoa(annotationID))
+func _getParentID(annotationID int, db *sql.DB, t string) (int, bool) {
+	rows, err := db.Query("SELECT parent FROM " + t + "annotationlink where child=" + strconv.Itoa(annotationID))
 	parentID := -1
 	if err != nil {
 		return parentID, false

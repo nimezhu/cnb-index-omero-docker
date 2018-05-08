@@ -142,8 +142,8 @@ func main() {
 		fmt.Printf("%3v | %8v | %6v | %6v\n", annotationID, name, value, index)
 		d := AnnotationMapValue{annotationID, name, value, index}
 		dbmem[index] = &d
-		if a, ok := getImageParentID(annotationID, db); ok {
-			fmt.Println("Image Parent ID", a)
+		if a, t, ok := getParentIDType(annotationID, db); ok {
+			fmt.Println("Parent ID", a, t)
 		}
 		dbindexInsert(&d)
 	}
