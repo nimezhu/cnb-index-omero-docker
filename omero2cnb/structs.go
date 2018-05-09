@@ -5,24 +5,33 @@ type App struct {
 	Version string
 }
 type AnnotationMapValue struct {
-	AnnotaitionID int    `json:"annotation_id"`
-	Name          string `json:"name"`
-	Value         string `json:"value"`
-	Index         int    `json:"index"`
+	AnnotationID int    `json:"annotation_id"`
+	Name         string `json:"name"`
+	Value        string `json:"value"`
+	Index        int    `json:"index"`
+	ParentType   string `json:"parent_type"`
+	ParentID     int    `json:"parent_id"`
+}
+type RawAnnotationMapValue struct {
+	AnnotationID int    `json:"annotation_id"`
+	Name         string `json:"name"`
+	Value        string `json:"value"`
+	Index        int    `json:"index"`
 }
 type Action struct {
 	Table  string `json:"table"`
 	Action string `json:"action"`
 	//Data   interface{} `json:"data"`
-	Data AnnotationMapValue `json:"data"`
+	Data RawAnnotationMapValue `json:"data"`
 }
 type BedURI struct {
-	genome string
-	chr    string
-	start  int
-	end    int
-	id     string
-	color  string
+	genome   string
+	chr      string
+	start    int
+	end      int
+	id       string
+	color    string
+	parentID string //parent should be AnnotaitonMapValue
 }
 
 func (b *BedURI) SetId(value string) {
@@ -48,4 +57,7 @@ func (b *BedURI) End() int {
 }
 func (b *BedURI) Id() string {
 	return b.id
+}
+func (b *BedURI) ParentID() string {
+	return b.parentID
 }

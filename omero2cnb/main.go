@@ -16,8 +16,9 @@ import (
 	"github.com/nimezhu/data"
 )
 
-var dbmem map[int]*AnnotationMapValue
+var dbmem map[string]*AnnotationMapValue
 var dbindex map[string]*data.BinIndexMap
+var db *sql.DB
 
 const AppName string = "Omerome Browser"
 const VERSION string = "0.0.1"
@@ -28,7 +29,8 @@ var app App = App{AppName, VERSION}
 func dbindexInsert(d *AnnotationMapValue) {
 	if d.Name == coordsKey {
 		prefix := strconv.Itoa(d.Index)
-		if arr, ok := parseRegions(d.Value, prefix); ok {
+		k := getKey(d)
+		if arr, ok := parseRegions(d.Value, prefix, k); ok {
 			for _, v := range arr {
 				if _, ok1 := dbindex[v.Genome()]; !ok1 {
 					dbindex[v.Genome()] = data.NewBinIndexMap()
@@ -41,32 +43,47 @@ func dbindexInsert(d *AnnotationMapValue) {
 func dbindexDelete(d *AnnotationMapValue) {
 	if d.Name == coordsKey {
 		prefix := strconv.Itoa(d.Index)
-		if arr, ok := parseRegions(d.Value, prefix); ok {
+		k := getKey(d)
+		if arr, ok := parseRegions(d.Value, prefix, k); ok {
 			for _, v := range arr {
 				dbindex[v.Genome()].Delete(v)
 			}
 		}
 	}
 }
+func getKey(d *AnnotationMapValue) string {
+	return fmt.Sprintf("%d:%d", d.AnnotationID, d.Index)
+}
 func insertEntry(d *AnnotationMapValue) error {
-	dbmem[d.Index] = d
+	k := getKey(d)
+	dbmem[k] = d
 	dbindexInsert(d)
 	return nil
 }
 func deleteEntry(d *AnnotationMapValue) error {
-	delete(dbmem, d.Index)
+	delete(dbmem, getKey(d))
 	dbindexDelete(d)
 	return nil
 }
 func updateEntry(d *AnnotationMapValue) error {
-	previous := dbmem[d.Index]
+	k := getKey(d)
+	previous := dbmem[k]
 	if d.Name == coordsKey {
 		dbindexDelete(previous)
 		dbindexInsert(d)
 	}
-	delete(dbmem, d.Index)
-	dbmem[d.Index] = d
+	delete(dbmem, k)
+	dbmem[k] = d
 	return nil
+}
+func addParentTypeID(a *RawAnnotationMapValue) *AnnotationMapValue {
+	if idx, t, ok := getParentIDType(a.AnnotationID, db); ok {
+		d := AnnotationMapValue{a.AnnotationID, a.Name, a.Value, a.Index, t, idx}
+		return &d
+	} else {
+		d := AnnotationMapValue{a.AnnotationID, a.Name, a.Value, a.Index, "unknown", -1}
+		return &d
+	}
 }
 func waitForNotification(l *pq.Listener) {
 	for {
@@ -85,12 +102,13 @@ func waitForNotification(l *pq.Listener) {
 			var action Action
 			json.Unmarshal(prettyJSON.Bytes(), &action)
 			fmt.Println(action.Action, action.Data.Name)
+			processedData := addParentTypeID(&action.Data)
 			if action.Action == "INSERT" {
-				insertEntry(&action.Data)
+				insertEntry(processedData)
 			} else if action.Action == "DELETE" {
-				deleteEntry(&action.Data)
+				deleteEntry(processedData)
 			} else if action.Action == "UPDATE" {
-				updateEntry(&action.Data)
+				updateEntry(processedData)
 
 			}
 			return
@@ -120,9 +138,9 @@ func main() {
 	passwd := os.Args[4]
 	conninfo := fmt.Sprintf("host=%s dbname=%s user=%s password=%s sslmode=disable", host, dbname, user, passwd)
 	port := 3721
-
-	db, err := sql.Open("postgres", conninfo)
-	dbmem = map[int]*AnnotationMapValue{}
+	var err error
+	db, err = sql.Open("postgres", conninfo)
+	dbmem = map[string]*AnnotationMapValue{}
 	dbindex = map[string]*data.BinIndexMap{}
 	defer db.Close()
 
@@ -132,6 +150,7 @@ func main() {
 	//TODO Processing Available Data
 	rows, err := db.Query("SELECT * FROM annotation_mapvalue")
 	checkErr(err)
+	annos := []*RawAnnotationMapValue{}
 	for rows.Next() {
 		var annotationID int
 		var name string
@@ -140,11 +159,11 @@ func main() {
 		err = rows.Scan(&annotationID, &name, &value, &index)
 		checkErr(err)
 		fmt.Printf("%3v | %8v | %6v | %6v\n", annotationID, name, value, index)
-		d := AnnotationMapValue{annotationID, name, value, index}
-		if a, t, ok := getParentIDType(annotationID, db); ok {
-			fmt.Println("Parent ID", a, t)
-		}
-		insertEntry(&d)
+		a := RawAnnotationMapValue{annotationID, name, value, index}
+		annos = append(annos, &a)
+	}
+	for _, a := range annos {
+		insertEntry(addParentTypeID(a))
 	}
 
 	//manager
@@ -152,9 +171,9 @@ func main() {
 	//TODO Serve HTTP dbmem
 	router := mux.NewRouter()
 	//add manager
-	manager := Manager{dbmem, ""}
-	manager.ServeTo(router)
-	binManager := BinindexRouter{dbindex, "omero"}
+	//manager := Manager{dbmem, ""}
+	//manager.ServeTo(router)
+	binManager := BinindexRouter{dbindex, dbmem, "omero"}
 	binManager.ServeTo(router)
 
 	router.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {

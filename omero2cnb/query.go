@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"strconv"
 )
 
@@ -9,6 +10,7 @@ func getParentIDType(annotationID int, db *sql.DB) (int, string, bool) {
 	var t = []string{"image", "well", "project", "dataset"}
 	for _, v := range t {
 		if idx, ok := _getParentID(annotationID, db, v); ok {
+			fmt.Println(idx, v)
 			return idx, v, true
 		}
 	}
@@ -19,7 +21,8 @@ func getImageParentID(id int, db *sql.DB) (int, bool) {
 }
 
 func _getParentID(annotationID int, db *sql.DB, t string) (int, bool) {
-	rows, err := db.Query("SELECT parent FROM " + t + "annotationlink where child=" + strconv.Itoa(annotationID))
+	sql := "SELECT parent FROM " + t + "annotationlink WHERE child=" + strconv.Itoa(annotationID)
+	rows, err := db.Query(sql)
 	parentID := -1
 	if err != nil {
 		return parentID, false

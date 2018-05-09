@@ -8,7 +8,7 @@ import (
 )
 
 type Manager struct {
-	Data   map[int]*AnnotationMapValue
+	Data   map[string]*AnnotationMapValue
 	prefix string
 }
 

@@ -13,6 +13,7 @@ import (
 
 type BinindexRouter struct {
 	index  map[string]*data.BinIndexMap
+	mem    map[string]*AnnotationMapValue
 	dbname string //omero
 }
 
@@ -34,7 +35,7 @@ func (db *BinindexRouter) ServeTo(router *mux.Router) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		params := mux.Vars(r)
 		genome := params["genome"]
-		io.WriteString(w, "[{\"dbname\":\"omero\",\"format\":\"bigbed\",\"genome\":\""+genome+"\",\"uri\":\"null\"}]")
+		io.WriteString(w, "[{\"dbname\":\"omero\",\"format\":\"binindex\",\"genome\":\""+genome+"\",\"uri\":\"null\"}]")
 	})
 	router.HandleFunc("/list", func(w http.ResponseWriter, r *http.Request) {
 
@@ -42,7 +43,7 @@ func (db *BinindexRouter) ServeTo(router *mux.Router) {
 	router.HandleFunc("/{genome}/"+db.dbname+"/list", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		//id := params["id"]
-		io.WriteString(w, "[{\"id\":\"omero\",\"format\":\"bigbed\"}]")
+		io.WriteString(w, "[{\"id\":\"omero\",\"format\":\"binindex\"}]")
 	})
 	router.HandleFunc("/{genome}/"+db.dbname+"/omero/get/{chr}:{start}-{end}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -67,8 +68,9 @@ func (db *BinindexRouter) ServeTo(router *mux.Router) {
 				return
 			}
 			for v := range vals {
-				io.WriteString(w, fmt.Sprintf("%s\t%d\t%d\t%s\t0\t.\t%d\t%d\t%s", chrom, v.Start(), v.End(), v.Id(), v.Start(), v.Start(), v.(*BedURI).Color()))
-				io.WriteString(w, "\n")
+				p, _ := db.mem[v.(*BedURI).ParentID()]
+				fmt.Println(p.AnnotationID, p.ParentType)
+				io.WriteString(w, fmt.Sprintf("%s\t%d\t%d\t%s\t%s\t%d\t%s\n", chrom, v.Start(), v.End(), v.Id(), p.ParentType, p.ParentID, v.(*BedURI).Color()))
 			}
 		}
 	})

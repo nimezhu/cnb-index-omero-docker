@@ -39,7 +39,7 @@ func RegSplit(text string, delimeter string) []string {
 	return result
 }
 
-func parseRegion(s string, name string) (*BedURI, bool) {
+func parseRegion(s string, name string, parentID string) (*BedURI, bool) {
 	a := RegSplit(s, "[:]")
 	genome := defaultGenome
 	var chr string
@@ -60,10 +60,10 @@ func parseRegion(s string, name string) (*BedURI, bool) {
 	if !ok1 {
 		return nil, false
 	}
-	return &BedURI{genome, chr, start, end, name, color}, true
+	return &BedURI{genome, chr, start, end, name, color, parentID}, true
 }
 
-func parseRegions(s string, prefix string) ([]*BedURI, bool) {
+func parseRegions(s string, prefix string, parentID string) ([]*BedURI, bool) {
 	arr := RegSplit(s, "[;,]")
 	retv := make([]*BedURI, len(arr))
 	var sign = true
@@ -75,7 +75,7 @@ func parseRegions(s string, prefix string) ([]*BedURI, bool) {
 		} else {
 			name = prefix
 		}
-		a, ok := parseRegion(arr[i], name)
+		a, ok := parseRegion(arr[i], name, parentID)
 		if !ok {
 			retv[i] = nil
 			sign = false
