@@ -136,6 +136,7 @@ func main() {
 	dbname := os.Args[2]
 	user := os.Args[3]
 	passwd := os.Args[4]
+	omero := os.Args[5] //omero server
 	conninfo := fmt.Sprintf("host=%s dbname=%s user=%s password=%s sslmode=disable", host, dbname, user, passwd)
 	port := 3721
 	var err error
@@ -173,7 +174,7 @@ func main() {
 	//add manager
 	//manager := Manager{dbmem, ""}
 	//manager.ServeTo(router)
-	binManager := BinindexRouter{dbindex, dbmem, "omero"}
+	binManager := BinindexRouter{dbindex, dbmem, "omero", omero}
 	binManager.ServeTo(router)
 
 	router.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
