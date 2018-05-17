@@ -1,6 +1,5 @@
 FROM postgres:latest
-ADD omeroExt /usr/local/bin/
-ADD pgweb /usr/local/bin/
+ADD omero2cnb /usr/local/bin/
 ADD entrypoint.sh /usr/local/bin/
 ADD notify.sql /root/
 ADD trigger.sql /root/
